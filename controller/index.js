@@ -1,7 +1,7 @@
 // const axios = require('axios');
 // const libFuncion = require('../helper/libFunction');
 const accountSid = 'AC8aaa0283a0ae9b6d60fe06a1fab34b90';
-const authToken = '3646108e832191e141900c42341d2481';
+const authToken = '907c0f1c0bb0efff66215dc572b1d9d5';
 const client = require('twilio')(accountSid, authToken);
 // const con = require("../database/db")
 
@@ -128,12 +128,70 @@ try {
 }
 
 const send_sms = async (req, res) => {
+  try {
+      console.log(req.body, ";;;;;;;;;;")
+      const mailbox = req.body['tag-input'];
+      const tracking = req.body.cuisine;
+      const package = "package"
+      const msg = `Dear mailbox owner of ${mailbox}, your ${package} with tracking no. ${tracking} has arrived and ready for pick up.`
+      console.log(`Dear mailbox owner of ${mailbox}, your ${package} with tracking no. ${tracking} has arrived.`)
+          const API_KEY = process.env.API_KEY;
+      const datenew = new Date();
+      const formattedDate = datenew.toISOString().slice(0, 19).replace("T", " ");
+      
+      console.log('Formatted Date:', formattedDate);
+      console.log(datenew, "/////////////");
+      promisePool.query(`INSERT INTO incoming (mailbox, timestamp, flag_picked, flag_deleted)
+      VALUES (${mailbox}, '${formattedDate}', 0, 0);`)
+      .then(([rows, fields]) => {
+console.log(rows, "rows");
+      })
+
+      const filePath = path.join(__dirname, '../uploads', 'mail.csv');
+      console.log(filePath);
+      const csvContent = [];
+      if (fs.existsSync(filePath)) {
+        let rowCount = 0;
+      fs.createReadStream(filePath)
+    .pipe(csv({ headers: false }))
+    .on('data', (data) => 
+    {
+      rowCount++;
+      if (rowCount > 6) {
+        if (data['4']) {
+            data['4'] = data['4'].replace(/\D/g, ''); 
+          }
+        csvContent.push(data);
+      }})
+    .on('end', () => {
+        console.log(csvContent, "::::::::::::::::::::::::::::::::::::::::::::::")
+        const phone = csvContent.map(obj => obj['0'] == mailbox ? obj['4'] : null).find(value => value !== null);
+
+console.log("Value of '4' where '0'=5001:", phone);
+client.messages
+.create({
+ body: msg,
+ from: '+16504050844',
+ to: `+1${phone}`
+// to: '+14083415122'
+})
+.then(message => console.log(message.sid, message.status));
+res.send(true)
+    });
+  }       
+  } catch (err) {
+      console.error(err.message);
+      res.send(err.message);
+  }
+}
+
+const send_sms2 = async (req, res) => {
     try {
         console.log(req.body, ";;;;;;;;;;")
         const mailbox = req.body['tag-input'];
         const tracking = req.body.cuisine;
         const package = "package"
-        const msg = `Dear mailbox owner of ${mailbox}, your ${package} with tracking no. ${tracking} has arrived`
+        const msg = `Dear mailbox owner of ${mailbox}, your ${package} with tracking no. ${tracking} has arrived and ready for pick up.`
         console.log(`Dear mailbox owner of ${mailbox}, your ${package} with tracking no. ${tracking} has arrived.`)
             const API_KEY = process.env.API_KEY;
         const datenew = new Date();
@@ -159,14 +217,14 @@ console.log(rows, "rows");
 
 
 
-// client.messages
-// .create({
-//    body: msg,
-//    from: '+16504050844',
-//   //  to: `+${filteredData[0]['Phone']}`
+client.messages
+.create({
+   body: msg,
+   from: '+16504050844',
+   to: `+${filteredData[0]['Phone']}`
 // to: '+14083415122'
-//  })
-// .then(message => console.log(message.sid, message.status));
+ })
+.then(message => console.log(message.sid, message.status));
             res.send(true)
     
             
